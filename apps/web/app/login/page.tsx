@@ -76,7 +76,7 @@ export default function Login() {
   }
   const title = step==='invite'?'Aktifkan akun staf':step==='setup'?'Buat workspace':step==='enroll'?'Aktifkan 2FA':step==='otp'?'Verifikasi akses':'Masuk ke KarsaHQ'
   return <main className="login-shell">
-    <section className="login-aside"><div className="brand"><span className="mark"><i/><i/><i/></span>Karsa<span>HQ</span></div><div className="morph" aria-hidden="true"><i/><i/><i/></div><div><h2>Ruang kerja HR</h2><p>Kelola karyawan, kehadiran, dan pengajuan dalam satu workspace.</p></div></section>
+    <section className="login-aside"><div className="brand"><span className="mark"><i/><i/><i/></span>Karsa<span>HQ</span></div><div className="morph" aria-hidden="true"><i/><i/><i/><span><ShieldCheck size={52} strokeWidth={1.35}/></span></div><div><h2>Ruang kerja HR</h2><p>Kelola karyawan, kehadiran, dan pengajuan dalam satu workspace.</p></div></section>
     <section className="login-content"><div className="login-box" key={step}>
       <span className="metric-icon">{step==='login'?<KeyRound size={19}/>:<ShieldCheck size={19}/>}</span>
       <h1>{title}</h1>

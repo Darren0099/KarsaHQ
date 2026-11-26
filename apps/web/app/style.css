@@ -196,3 +196,12 @@ footer span{padding:0 5px}
 @media(prefers-reduced-motion:reduce){.morph i,.login-box{animation:none}}
 .invite-box{display:grid;gap:8px;justify-items:start;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .invite-box p{font-size:14px}
+.login-aside{background:radial-gradient(ellipse at 51% 45%,#392820 0%,#26221f 54%,#211f1d 88%)}
+.morph::before{content:'';width:min(88%,400px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#ec5b3760,transparent 68%);filter:blur(24px)}
+.morph i{background:linear-gradient(145deg,#f8a37a 8%,#ed622c 50%,#a53a1b 95%);box-shadow:inset 0 0 24px #ffc4a424}
+.morph i:nth-child(2){background:linear-gradient(140deg,#ffc19b80,#9a3e3270);backdrop-filter:blur(8px);border:1px solid #ffd4b54d}
+.morph i:nth-child(3){background:linear-gradient(150deg,#ffe2d780,#ff9b6d35);border:1px solid #ffded680}
+.morph span{position:absolute;display:grid;place-items:center;width:clamp(65px,10vw,116px);aspect-ratio:1;color:#fff;border-radius:29%;border:1px solid #fff8;background:linear-gradient(145deg,#fff5,#ffd7c021);box-shadow:0 14px 45px #43180852;backdrop-filter:blur(13px);transform:rotate(-11deg)}
+.workspace-page{animation:enter .22s ease-out}
+@media(max-width:760px){.morph span svg{width:32px;height:32px}}
+@media(prefers-reduced-motion:reduce){.workspace-page{animation:none}}

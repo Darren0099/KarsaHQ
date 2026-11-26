@@ -202,7 +202,7 @@ export default function Dashboard() {
     </aside>
     <div className="content">
       <header className="top"><div className="crumb"><button className="icon mobile-menu" aria-label="Buka menu" onClick={()=>setMobile(true)}><Menu size={21}/></button><span>Workspace</span><ChevronRight size={14}/><b>{page}</b></div><div className="tools">{admin&&<button className="search" aria-label="Cari karyawan" onClick={()=>{setQuery('');open('search')}}><Search size={16}/><span>Cari karyawan</span><kbd><Command size={11}/> K</kbd></button>}{admin&&<button className="icon bell" aria-label="Pemberitahuan" onClick={()=>open('alerts')}><Bell size={18}/>{pending.length>0 && <i/>}</button>}<button className="icon" aria-label="Keluar" title="Keluar" onClick={async()=>{const response=await fetch('/api/auth/sign-out',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(response.ok)window.location.assign('/login');else setNotice('Gagal keluar. Coba lagi.')}}><LogOut size={18}/></button></div></header>
-      <main>
+      <main className="workspace-page" key={page}>
         {page==='Dashboard' ? <>
           <div className="intro"><div><div className="today"><span/> {new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'full'}).format(new Date())}</div><h1>Ringkasan HR</h1><p>Pantau kehadiran tim dan pengajuan yang perlu ditinjau.</p></div><button className="primary" onClick={()=>open('add')}><Plus size={17}/> Tambah karyawan</button></div>
           <div className="metrics">{[
