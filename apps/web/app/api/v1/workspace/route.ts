@@ -9,7 +9,7 @@ const longitude = z.number().min(-180).max(180)
 const actions = z.discriminatedUnion('action',[
   z.object({action:z.literal('employee.add'),employee:employeeInput}),
   z.object({action:z.literal('employee.invite'),employee:z.uuid()}),
-  z.object({action:z.literal('request.add'),employee:z.uuid(),type:z.enum(['Cuti tahunan','Lembur','Koreksi absensi']),date:z.iso.date()}),
+  z.object({action:z.literal('request.add'),employee:z.uuid().optional(),type:z.enum(['Cuti tahunan','Lembur','Koreksi absensi','Izin','Pengunduran diri']),date:z.iso.date(),endDate:z.iso.date().optional(),reason:z.string().trim().max(1000).optional(),letter:z.string().max(2796204).optional()}),
   z.object({action:z.literal('request.decide'),id:z.uuid(),status:z.enum(['Disetujui','Ditolak'])}),
   z.object({action:z.literal('attendance.record'),event:z.enum(['Masuk','Pulang']),latitude,longitude,accuracy:z.number().min(0).max(100000)}),
   z.object({action:z.literal('office.configure'),latitude,longitude,radius:z.number().int().min(20).max(5000)})
@@ -26,11 +26,11 @@ async function workspace(request:Request, write:boolean) {
   const client = await db.connect()
   try {
     await client.query('BEGIN')
-    const member = (await client.query('SELECT m.company_id,m.role,c.name,c.latitude,c.longitude,c.radius_m FROM hris.memberships m JOIN hris.companies c ON c.id=m.company_id WHERE m.user_id=$1',[session.user.id])).rows[0]
+    const member = (await client.query('SELECT m.company_id,m.role,m.employee_id,c.name,c.latitude,c.longitude,c.radius_m FROM hris.memberships m JOIN hris.companies c ON c.id=m.company_id WHERE m.user_id=$1',[session.user.id])).rows[0]
     if (!member) throw new WorkflowError(403,'Akun belum memiliki workspace.')
     const args = body?.data
     const admin = member.role==='admin'
-    if (args && args.action!=='attendance.record' && !admin) throw new WorkflowError(403,'Aksi membutuhkan akses admin.')
+    if (args && !['attendance.record','request.add'].includes(args.action) && !admin) throw new WorkflowError(403,'Aksi membutuhkan akses admin.')
     const tenant = member.company_id
     const members = admin && !args ? Number((await client.query('SELECT count(*) AS count FROM hris.memberships WHERE company_id=$1',[tenant])).rows[0].count) : 1
     let officeBefore: unknown
@@ -64,7 +64,13 @@ async function workspace(request:Request, write:boolean) {
       result={token}
     }
     if (args?.action==='request.add') {
-      const item=(await client.query('INSERT INTO hris.requests(company_id,employee_id,type,work_date) SELECT $1,id,$3,$4 FROM hris.employees WHERE id=$2 RETURNING id,employee_id,type,work_date,status',[tenant,args.employee,args.type,args.date])).rows[0]
+      const employeeId = admin ? args.employee : member.employee_id
+      if (!employeeId) throw new WorkflowError(403,'Akun belum terhubung ke profil karyawan.')
+      if (!admin && (args.type==='Koreksi absensi'||!args.reason)) throw new WorkflowError(400,'Pilih jenis pengajuan dan isi alasan.')
+      if (args.endDate && (!['Cuti tahunan','Izin'].includes(args.type)||args.endDate<args.date)) throw new WorkflowError(400,'Periksa tanggal akhir pengajuan.')
+      const letter = args.type==='Pengunduran diri' && args.letter ? Buffer.from(args.letter,'base64') : null
+      if (args.type==='Pengunduran diri' && (!letter||letter.length>2097152||letter.subarray(0,5).toString()!=='%PDF-')) throw new WorkflowError(400,'Lampirkan surat pengunduran diri dalam format PDF hingga 2 MB.')
+      const item=(await client.query('INSERT INTO hris.requests(company_id,employee_id,type,work_date,end_date,reason,resignation_letter) SELECT $1,id,$3,$4,$5,$6,$7 FROM hris.employees WHERE id=$2 RETURNING id,employee_id,type,work_date,status',[tenant,employeeId,args.type,args.date,args.endDate??null,args.reason||null,letter])).rows[0]
       if (!item) throw new WorkflowError(404,'Karyawan tidak ditemukan.')
       await audit(args.action,item.id,null,item)
     }
@@ -83,9 +89,19 @@ async function workspace(request:Request, write:boolean) {
       result=item
     }
     if (args?.action==='office.configure') await audit(args.action,tenant,officeBefore,officeAfter)
+    const documentId = new URL(request.url).searchParams.get('letter')
+    if (!args && documentId) {
+      const parsed=z.uuid().safeParse(documentId)
+      if (!parsed.success) throw new WorkflowError(404,'Surat tidak ditemukan.')
+      const row=(await client.query('SELECT resignation_letter FROM hris.requests WHERE id=$1 AND resignation_letter IS NOT NULL AND ($2 OR employee_id=$3)',[parsed.data,admin,member.employee_id])).rows[0]
+      if (!row) throw new WorkflowError(404,'Surat tidak ditemukan.')
+      await audit('request.letter.download',parsed.data,null,null)
+      await client.query('COMMIT')
+      return new Response(Uint8Array.from(row.resignation_letter),{headers:{'Content-Type':'application/octet-stream','Content-Disposition':'attachment; filename="surat-pengunduran-diri.pdf"','X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store'}})
+    }
     if (!args) {
       const staff = admin ? (await client.query('SELECT id,name,role,department FROM hris.employees ORDER BY created_at DESC,id')).rows : []
-      const approvals = admin ? (await client.query('SELECT r.id,e.name,r.type,r.work_date::text AS date,r.status FROM hris.requests r JOIN hris.employees e ON e.id=r.employee_id ORDER BY r.created_at DESC,r.id')).rows : []
+      const approvals = (await client.query('SELECT r.id,e.name,r.type,r.work_date::text AS date,r.status,r.end_date::text AS end_date,r.reason,(r.resignation_letter IS NOT NULL) AS has_letter FROM hris.requests r JOIN hris.employees e ON e.id=r.employee_id WHERE ($1 OR r.employee_id=$2) ORDER BY r.created_at DESC,r.id',[admin,member.employee_id])).rows
       const audit = admin ? (await client.query('SELECT id,actor_id,action,entity_id,created_at FROM hris.audit_logs ORDER BY created_at DESC,id LIMIT 100')).rows : []
       const attendance = (await client.query('SELECT id,event,review,recorded_at,distance_m FROM hris.attendance WHERE user_id=$1 ORDER BY recorded_at DESC,id LIMIT 30',[session.user.id])).rows
       const presence:Record<string,number>={}

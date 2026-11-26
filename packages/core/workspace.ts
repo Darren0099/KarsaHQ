@@ -7,4 +7,4 @@ export const employeeInput = z.object({
   department: z.enum(departments)
 })
 export type Employee = z.infer<typeof employeeInput> & { id: string }
-export type Request = { id: string; name: string; type: string; date: string; status: 'Menunggu' | 'Disetujui' | 'Ditolak' }
+export type Request = { id: string; name: string; type: string; date: string; end_date?:string|null; reason?:string|null; has_letter?:boolean; status: 'Menunggu' | 'Disetujui' | 'Ditolak' }
