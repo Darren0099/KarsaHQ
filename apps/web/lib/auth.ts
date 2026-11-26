@@ -2,12 +2,14 @@ import { Pool } from '@neondatabase/serverless'
 import { betterAuth } from 'better-auth'
 import { twoFactor } from 'better-auth/plugins'
 
-export const db = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 })
+const connection = {connectionString:process.env.DATABASE_URL,connectionTimeoutMillis:15000}
+export const db = new Pool({...connection,max:4})
+const provisioningDb = new Pool({...connection,max:2})
 
 export function makeAuth(provision = false) {
   const host = process.env.BETTER_AUTH_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? 'https://' + process.env.VERCEL_PROJECT_PRODUCTION_URL : 'http://localhost:3000')
   return betterAuth({
-    database: db,
+    database: provision ? provisioningDb : db,
     baseURL: host,
     secret: process.env.BETTER_AUTH_SECRET,
     appName: 'KarsaHQ',
@@ -30,6 +32,11 @@ export function makeAuth(provision = false) {
 
 type Auth = ReturnType<typeof makeAuth>
 let instance: Auth | undefined
+let provisioning: Auth | undefined
 export function getAuth() {
   return instance ??= makeAuth()
+}
+
+export function getProvisioningAuth() {
+  return provisioning ??= makeAuth(true)
 }

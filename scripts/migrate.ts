@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { getMigrations } from 'better-auth/db/migration'
 if (process.env.DIRECT_URL) process.env.DATABASE_URL = process.env.DIRECT_URL
 
@@ -13,7 +13,9 @@ async function main() {
     const client = await db.connect()
     try {
       await client.query('BEGIN')
-      await client.query(await readFile('db/migrations/001_workspace.sql','utf8'))
+      for (const file of (await readdir('db/migrations')).filter(file=>file.endsWith('.sql')).sort()) {
+        await client.query(await readFile('db/migrations/'+file,'utf8'))
+      }
       await client.query('COMMIT')
     } catch (error) {
       await client.query('ROLLBACK')

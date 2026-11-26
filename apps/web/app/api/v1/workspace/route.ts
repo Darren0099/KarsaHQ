@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto'
 import { z } from 'zod'
 import { db, getAuth } from '../../../../lib/auth'
 import { employeeInput } from '../../../../../../packages/core/workspace'
@@ -7,6 +8,7 @@ const latitude = z.number().min(-90).max(90)
 const longitude = z.number().min(-180).max(180)
 const actions = z.discriminatedUnion('action',[
   z.object({action:z.literal('employee.add'),employee:employeeInput}),
+  z.object({action:z.literal('employee.invite'),employee:z.uuid()}),
   z.object({action:z.literal('request.add'),employee:z.uuid(),type:z.enum(['Cuti tahunan','Lembur','Koreksi absensi']),date:z.iso.date()}),
   z.object({action:z.literal('request.decide'),id:z.uuid(),status:z.enum(['Disetujui','Ditolak'])}),
   z.object({action:z.literal('attendance.record'),event:z.enum(['Masuk','Pulang']),latitude,longitude,accuracy:z.number().min(0).max(100000)}),
@@ -37,6 +39,12 @@ async function workspace(request:Request, write:boolean) {
       officeBefore = (await client.query('SELECT latitude,longitude,radius_m FROM hris.companies WHERE id=$1 FOR UPDATE',[tenant])).rows[0]
       officeAfter = (await client.query('UPDATE hris.companies SET latitude=$2,longitude=$3,radius_m=$4 WHERE id=$1 RETURNING latitude,longitude,radius_m',[tenant,args.latitude,args.longitude,args.radius])).rows[0]
     }
+    if (args?.action==='employee.invite') {
+      const lock = await client.query('SELECT pg_try_advisory_xact_lock(hashtextextended($1,1)) AS acquired',[args.employee])
+      if (!lock.rows[0].acquired) throw new WorkflowError(409,'Undangan sedang diproses. Coba lagi sebentar.')
+      const assigned=(await client.query('SELECT 1 FROM hris.memberships WHERE company_id=$1 AND employee_id=$2',[tenant,args.employee])).rowCount
+      if (assigned) throw new WorkflowError(409,'Karyawan sudah memiliki akun.')
+    }
     await client.query('SET LOCAL ROLE karsahq_app')
     await client.query("SELECT set_config('app.company_id',$1,true)",[tenant])
     const audit = (action:string,id:string,before:unknown,after:unknown) => client.query('INSERT INTO hris.audit_logs(company_id,actor_id,action,entity_id,before_data,after_data) VALUES ($1,$2,$3,$4,$5,$6)',[tenant,session.user.id,action,id,before,after])
@@ -45,6 +53,15 @@ async function workspace(request:Request, write:boolean) {
       const {name,role,department}=args.employee
       const item=(await client.query('INSERT INTO hris.employees(company_id,name,role,department) VALUES ($1,$2,$3,$4) RETURNING id,name,role,department',[tenant,name,role,department])).rows[0]
       await audit(args.action,item.id,null,item)
+    }
+    if (args?.action==='employee.invite') {
+      const token = randomBytes(32).toString('base64url')
+      const tokenHash=createHash('sha256').update(token).digest('hex')
+      await client.query('UPDATE hris.employee_invitations SET expires_at=now() WHERE employee_id=$1 AND used_at IS NULL AND expires_at>now()',[args.employee])
+      const item=(await client.query('INSERT INTO hris.employee_invitations(company_id,employee_id,token_hash) SELECT $1,id,$3 FROM hris.employees WHERE id=$2 RETURNING id',[tenant,args.employee,tokenHash])).rows[0]
+      if (!item) throw new WorkflowError(404,'Karyawan tidak ditemukan.')
+      await audit(args.action,args.employee,null,{invitation_id:item.id})
+      result={token}
     }
     if (args?.action==='request.add') {
       const item=(await client.query('INSERT INTO hris.requests(company_id,employee_id,type,work_date) SELECT $1,id,$3,$4 FROM hris.employees WHERE id=$2 RETURNING id,employee_id,type,work_date,status',[tenant,args.employee,args.type,args.date])).rows[0]

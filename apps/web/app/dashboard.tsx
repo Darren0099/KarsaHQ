@@ -22,7 +22,7 @@ type Audit = {id:string;actor_id:string;action:string;entity_id:string;created_a
 type Clock = {id:string;event:string;review:string;recorded_at:string;distance_m:number|null}
 type Snapshot = {staff:Employee[];approvals:Request[];audit:Audit[];attendance:Clock[];company:string;role:'admin'|'employee';user:string;presence:Record<string,number>}
 const dateTimes = (date:string) => new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date(date))
-const actions:Record<string,string> = {'workspace.created':'Workspace dibuat','employee.add':'Karyawan ditambahkan','request.add':'Pengajuan dibuat','request.decide':'Keputusan pengajuan dicatat','attendance.record':'Absensi dicatat','office.configure':'Area kantor diubah'}
+const actions:Record<string,string> = {'workspace.created':'Workspace dibuat','employee.add':'Karyawan ditambahkan','request.add':'Pengajuan dibuat','request.decide':'Keputusan pengajuan dicatat','attendance.record':'Absensi dicatat','office.configure':'Area kantor diubah','employee.invite':'Undangan staf dibuat','employee.invite.accepted':'Undangan staf dipakai'}
 function weekFor(offset:number,presence:Record<string,number>) {
   const today = new Date(jakartaDay(new Date())+'T12:00:00Z')
   const monday = new Date(today)
@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [loadError,setLoadError] = useState('')
   const [busy,setBusy] = useState(false)
   const [gps,setGps] = useState(false)
+  const [invite,setInvite] = useState('')
   const [showArea,setShowArea] = useState(false)
   const staff = snapshot?.staff ?? []
   const approvals = snapshot?.approvals ?? []
@@ -69,11 +70,12 @@ export default function Dashboard() {
     const result = await response.json().catch(()=>null)
     if (!response.ok) throw new Error(result?.error??'Data belum dapat disimpan.')
     try {await refresh()} catch {setLoadError('Perubahan tersimpan. Muat ulang untuk melihat data terbaru.')}
+    return result
   }
 
   useEffect(()=>{
     function shortcut(event:KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if (snapshot?.role==='admin' && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
         setQuery('')
         setPanel('search')
@@ -81,7 +83,7 @@ export default function Dashboard() {
     }
     window.addEventListener('keydown',shortcut)
     return ()=>window.removeEventListener('keydown',shortcut)
-  },[])
+  },[snapshot?.role])
   useEffect(()=>{
     if (!notice) return
     const timeout = window.setTimeout(()=>setNotice(''),4000)
@@ -108,6 +110,7 @@ export default function Dashboard() {
   }
   function open(kind:NonNullable<typeof panel>,id='') {
     setError('')
+    setInvite('')
     setSelection(id)
     setPanel(kind)
   }
@@ -136,6 +139,15 @@ export default function Dashboard() {
   }
   function decide(next:'Disetujui'|'Ditolak') {
     void save({action:'request.decide',id:selection,status:next},'Pengajuan '+next.toLowerCase()+'.')
+  }
+  async function inviteEmployee(id:string) {
+    setBusy(true)
+    setError('')
+    try {
+      const result=await mutate({action:'employee.invite',employee:id})
+      setInvite(window.location.origin+'/login#invite='+result.token)
+    } catch (err) {setError(err instanceof Error?err.message:'Undangan belum dapat dibuat.')}
+    finally {setBusy(false)}
   }
   function recordLocation(event:'Masuk'|'Pulang') {
     if (!navigator.geolocation) {setNotice('Perangkat ini tidak mendukung akses lokasi.');return}
@@ -226,7 +238,8 @@ export default function Dashboard() {
       {panel==='add' && <form onSubmit={add}><label>Nama lengkap<input className="field" name="name" required minLength={2} maxLength={100}/></label><label>Jabatan<input className="field" name="role" required minLength={2} maxLength={100}/></label><label>Departemen<select className="field" name="department" required>{departments.map(item=><option key={item}>{item}</option>)}</select></label>{error && <p role="alert">{error}</p>}<div className="actions"><button type="button" className="secondary" onClick={()=>setPanel(null)}>Batal</button><button className="primary" disabled={busy}>Simpan karyawan</button></div></form>}
       {panel==='submit' && <form onSubmit={submitRequest}><label>Karyawan<select className="field" name="employee" required>{staff.map(item=><option key={item.id} value={item.id}>{item.name} · {item.id}</option>)}</select></label><label>Jenis pengajuan<select className="field" name="type" required>{(page==='Absensi'?['Koreksi absensi']:['Cuti tahunan','Lembur']).map(item=><option key={item}>{item}</option>)}</select></label><label>Tanggal<input className="field" name="date" type="date" required/></label>{error && <p role="alert">{error}</p>}<div className="actions"><button type="button" className="secondary" onClick={()=>setPanel(null)}>Batal</button><button className="primary" disabled={busy}>Kirim pengajuan</button></div></form>}
       {panel==='request' && selected && <><dl><dt>Karyawan</dt><dd>{selected.name}</dd><dt>Jenis</dt><dd>{selected.type}</dd><dt>Tanggal</dt><dd>{selected.date}</dd><dt>Status</dt><dd><span className={'status '+selected.status.toLowerCase()}>{selected.status}</span></dd></dl>{error&&<p role="alert">{error}</p>}{selected.status==='Menunggu' && <div className="actions"><button className="secondary" disabled={busy} onClick={()=>decide('Ditolak')}>Tolak</button><button className="primary" disabled={busy} onClick={()=>decide('Disetujui')}><Check size={16}/> Setujui</button></div>}</>}
-      {panel==='employee' && selectedEmployee && <dl><dt>Nama</dt><dd>{selectedEmployee.name}</dd><dt>ID</dt><dd>{selectedEmployee.id}</dd><dt>Jabatan</dt><dd>{selectedEmployee.role}</dd><dt>Departemen</dt><dd>{selectedEmployee.department}</dd></dl>}
+      {panel==='employee' && selectedEmployee && <><dl><dt>Nama</dt><dd>{selectedEmployee.name}</dd><dt>ID</dt><dd>{selectedEmployee.id}</dd><dt>Jabatan</dt><dd>{selectedEmployee.role}</dd><dt>Departemen</dt><dd>{selectedEmployee.department}</dd></dl>
+      {admin&&<div className="invite-box">{error&&<p role="alert">{error}</p>}{invite?<><p>Tautan berlaku 48 jam dan hanya bisa dipakai sekali.</p><input className="field full" value={invite} readOnly aria-label="Tautan undangan" onFocus={event=>event.currentTarget.select()}/><button className="secondary" onClick={async()=>{try{await navigator.clipboard.writeText(invite);setNotice('Tautan undangan disalin.')}catch{setError('Pilih dan salin tautan secara manual.')}}}>Salin tautan</button></>:<button className="secondary" disabled={busy} onClick={()=>inviteEmployee(selectedEmployee.id)}>Buat tautan undangan</button>}</div>}</>}
       {panel==='search' && <><input className="field full" aria-label="Nama, jabatan, departemen, atau ID" placeholder="Nama, jabatan, departemen, atau ID" value={query} onChange={e=>setQuery(e.target.value)}/>{matches.map(item=><button className="list-part" key={item.id} onClick={()=>open('employee',item.id)}>{item.name}<ChevronRight size={16}/></button>)}{!matches.length && <p className="empty">Karyawan tidak ditemukan.</p>}</>}
       {panel==='alerts' && <>{pending.map(item=><button className="list-part" key={item.id} onClick={()=>open('request',item.id)}>{item.type} · {item.name}<ChevronRight size={16}/></button>)}{!pending.length && <p className="empty">Semua pengajuan sudah ditinjau.</p>}</>}
     </Modal>}

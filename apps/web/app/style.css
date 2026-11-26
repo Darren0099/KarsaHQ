@@ -194,3 +194,5 @@ footer span{padding:0 5px}
 .gps-card label{display:grid;gap:4px;font-size:13px}
 @media(max-width:760px){.login-shell{display:block;padding:10px}.login-aside{min-height:160px;padding:18px}.login-aside h2{font-size:24px}.login-aside p{font-size:13px}.morph{inset:0 0 0 48%;opacity:.45}.login-content{padding:30px 14px}}
 @media(prefers-reduced-motion:reduce){.morph i,.login-box{animation:none}}
+.invite-box{display:grid;gap:8px;justify-items:start;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.invite-box p{font-size:14px}

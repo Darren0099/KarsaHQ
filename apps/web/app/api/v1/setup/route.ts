@@ -1,6 +1,6 @@
 import { timingSafeEqual, createHash } from 'node:crypto'
 import { z } from 'zod'
-import { db, makeAuth } from '../../../../lib/auth'
+import { db, getProvisioningAuth } from '../../../../lib/auth'
 
 const input = z.object({
   token: z.string().max(256),
@@ -20,6 +20,7 @@ export async function POST(request:Request) {
   const {token,name,email,password,company} = body.data
   if (!timingSafeEqual(digest(secret),digest(token))) return Response.json({error:'Kunci pengaturan tidak valid.'},{status:403})
   const client = await db.connect()
+  let createdUser:string|undefined
   try {
     await client.query('BEGIN')
     const lock = await client.query('SELECT pg_try_advisory_xact_lock(491098321) AS acquired')
@@ -32,7 +33,8 @@ export async function POST(request:Request) {
       await client.query('ROLLBACK')
       return Response.json({error:'Workspace sudah dibuat.'},{status:409})
     }
-    const signup = await makeAuth(true).api.signUpEmail({body:{name,email,password}})
+    const signup = await getProvisioningAuth().api.signUpEmail({body:{name,email,password}})
+    createdUser=signup.user.id
     const tenant = await client.query('INSERT INTO hris.companies(name) VALUES ($1) RETURNING id',[company])
     const companyId = tenant.rows[0].id
     await client.query('INSERT INTO hris.memberships(user_id,company_id,role) VALUES ($1,$2,$3)',[signup.user.id,companyId,'admin'])
@@ -41,6 +43,7 @@ export async function POST(request:Request) {
     return Response.json({ok:true})
   } catch {
     await client.query('ROLLBACK')
+    if (createdUser) await client.query('DELETE FROM public."user" WHERE id=$1 AND NOT EXISTS (SELECT 1 FROM hris.memberships WHERE user_id=$1)',[createdUser]).catch(()=>undefined)
     return Response.json({error:'Akun belum bisa dibuat. Periksa ketersediaan email dan coba lagi.'},{status:500})
   } finally { client.release() }
 }
