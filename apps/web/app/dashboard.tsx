@@ -1,6 +1,6 @@
 'use client'
 
-import {Activity, ArrowDownToLine, ArrowRight, ArrowUpRight, Bell, Building2, CalendarDays, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock3, Command, LayoutDashboard, LogOut, Menu, Plus, Search, Users, X} from 'lucide-react'
+import {Activity, ArrowDownToLine, ArrowRight, ArrowUpRight, Bell, Building2, CalendarDays, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock3, Command, LayoutDashboard, LogOut, Menu, Moon, Plus, Search, Sun, Users, X} from 'lucide-react'
 import {useEffect, useState} from 'react'
 import type {FormEvent} from 'react'
 import {departments, employeeInput} from '../../../packages/core/workspace'
@@ -52,6 +52,8 @@ export default function Dashboard() {
   const [panel,setPanel] = useState<'add'|'submit'|'request'|'employee'|'search'|'alerts'|null>(null)
   const [selection,setSelection] = useState('')
   const [mobile,setMobile] = useState(false)
+  const [compact,setCompact] = useState(false)
+  const [dark,setDark] = useState(false)
   const [notice,setNotice] = useState('')
   const [error,setError] = useState('')
 
@@ -62,6 +64,23 @@ export default function Dashboard() {
     const data:Snapshot = await response.json()
     setSnapshot(data)
     if (data.role==='employee') setPage(current=>current==='Dashboard'?'Absensi':current)
+  }
+  useEffect(()=>{
+    setCompact(localStorage.getItem('karsahq-sidebar')==='compact')
+    const theme=localStorage.getItem('karsahq-theme')
+    setDark(theme===null?window.matchMedia('(prefers-color-scheme: dark)').matches:theme==='dark')
+  },[])
+  function toggleSidebar() {
+    if (window.matchMedia('(max-width: 700px)').matches) {
+      setMobile(current=>!current)
+    } else {
+      localStorage.setItem('karsahq-sidebar',compact?'wide':'compact')
+      setCompact(!compact)
+    }
+  }
+  function toggleTheme() {
+    localStorage.setItem('karsahq-theme',dark?'light':'dark')
+    setDark(!dark)
   }
   useEffect(()=>{void refresh().catch((err:Error)=>setLoadError(err.message))},[])
   async function mutate(body:Record<string,unknown>) {
@@ -145,7 +164,7 @@ export default function Dashboard() {
     setError('')
     try {
       const result=await mutate({action:'employee.invite',employee:id})
-      setInvite(window.location.origin+'/login#invite='+result.token)
+      setInvite(window.location.origin+'/register#invite='+result.token)
     } catch (err) {setError(err instanceof Error?err.message:'Undangan belum dapat dibuat.')}
     finally {setBusy(false)}
   }
@@ -192,19 +211,18 @@ export default function Dashboard() {
   }
 
   if (!snapshot) return <main><p role={loadError?'alert':'status'}>{loadError||'Memuat workspace…'}</p>{loadError&&<button className="secondary" onClick={()=>window.location.reload()}>Muat ulang</button>}</main>
-  return <div className="shell">
+  return <div className={compact?'shell compact':'shell'} data-theme={dark?'dark':'light'}>
     {mobile && <button className="overlay" aria-label="Tutup menu" onClick={()=>setMobile(false)}/>}
-    <aside className={mobile?'sidebar visible':'sidebar'}>
-      <button className="brand" onClick={()=>go(admin?'Dashboard':'Absensi')}><span className="mark"><i/><i/><i/></span>Karsa<span>HQ</span></button>
-      <div className="workspace"><span className="workspace-icon"><Building2 size={17}/></span><div><b>{snapshot.company}</b><small>{admin?'Admin HR':'Karyawan'}</small></div></div>
-      <nav aria-label="Navigasi utama"><p>WORKSPACE</p>{nav.filter(item=>admin||item.label==='Absensi').map(({label,icon:Icon},index)=><div key={label}>{index===3 && <p>OPERASIONAL</p>}{index===6 && <p>INSIGHT</p>}<button className={page===label?'nav active':'nav'} aria-current={page===label?'page':undefined} onClick={()=>go(label)}><Icon size={18}/>{label}{label==='Persetujuan' && pending.length>0 && <span className="count">{pending.length}</span>}</button></div>)}</nav>
+    <aside id="dashboard-sidebar" className={mobile?'sidebar visible':'sidebar'}>
+      <button className="brand" aria-label="KarsaHQ" onClick={()=>go(admin?'Dashboard':'Absensi')}><span className="mark"><i/><i/><i/></span><span className="brand-word">Karsa<b>HQ</b></span></button>
+      <nav aria-label="Navigasi utama"><p>Menu utama</p>{nav.filter(item=>admin||item.label==='Absensi').map(({label,icon:Icon},index)=><div key={label}>{index===3 && <p>Operasional</p>}{index===6 && <p>Laporan & audit</p>}<button className={page===label?'nav active':'nav'} aria-current={page===label?'page':undefined} aria-label={label} title={compact?label:undefined} onClick={()=>go(label)}><Icon size={19}/><span className="nav-label">{label}</span>{label==='Persetujuan' && pending.length>0 && <span className="count">{pending.length}</span>}</button></div>)}</nav>
       <div className="sidebar-foot"><span className="initial admin">{initials(snapshot.user)}</span><div><b>{snapshot.user}</b><small>{admin?'Admin HR':'Karyawan'}</small></div></div>
     </aside>
     <div className="content">
-      <header className="top"><div className="crumb"><button className="icon mobile-menu" aria-label="Buka menu" onClick={()=>setMobile(true)}><Menu size={21}/></button><span>Workspace</span><ChevronRight size={14}/><b>{page}</b></div><div className="tools">{admin&&<button className="search" aria-label="Cari karyawan" onClick={()=>{setQuery('');open('search')}}><Search size={16}/><span>Cari karyawan</span><kbd><Command size={11}/> K</kbd></button>}{admin&&<button className="icon bell" aria-label="Pemberitahuan" onClick={()=>open('alerts')}><Bell size={18}/>{pending.length>0 && <i/>}</button>}<button className="icon" aria-label="Keluar" title="Keluar" onClick={async()=>{const response=await fetch('/api/auth/sign-out',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(response.ok)window.location.assign('/login');else setNotice('Gagal keluar. Coba lagi.')}}><LogOut size={18}/></button></div></header>
+      <header className="top"><button className="icon sidebar-toggle" aria-label="Alihkan tampilan sidebar" aria-controls="dashboard-sidebar" title="Alihkan tampilan sidebar" onClick={toggleSidebar}><Menu size={21}/></button><div className="tools"><button className="icon theme-toggle" aria-label={dark?'Aktifkan mode terang':'Aktifkan mode malam'} title={dark?'Mode terang':'Mode malam'} onClick={toggleTheme}>{dark?<Sun size={20}/>:<Moon size={20}/>}</button>{admin&&<button className="search" aria-label="Cari karyawan" onClick={()=>{setQuery('');open('search')}}><Search size={16}/><span>Cari karyawan</span><kbd><Command size={11}/> K</kbd></button>}{admin&&<button className="icon bell" aria-label="Pemberitahuan" onClick={()=>open('alerts')}><Bell size={18}/>{pending.length>0 && <i/>}</button>}<button className="icon" aria-label="Keluar" title="Keluar" onClick={async()=>{const response=await fetch('/api/auth/sign-out',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(response.ok)window.location.assign('/login');else setNotice('Gagal keluar. Coba lagi.')}}><LogOut size={18}/></button></div></header>
       <main className="workspace-page" key={page}>
         {page==='Dashboard' ? <>
-          <div className="intro"><div><div className="today"><span/> {new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'full'}).format(new Date())}</div><h1>Ringkasan HR</h1><p>Pantau kehadiran tim dan pengajuan yang perlu ditinjau.</p></div><button className="primary" onClick={()=>open('add')}><Plus size={17}/> Tambah karyawan</button></div>
+          <div className="intro"><div><div className="today"><span/> {new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'full'}).format(new Date())}</div><h1>Dashboard</h1><p>Pantau kehadiran tim dan pengajuan yang perlu ditinjau.</p></div><button className="primary" onClick={()=>open('add')}><Plus size={17}/> Tambah karyawan</button></div>
           <div className="metrics">{[
             {icon:Users,title:'Karyawan aktif',value:String(staff.length).padStart(2,'0'),caption:'Terdaftar di direktori',target:'Karyawan'},
             {icon:Activity,title:'Kehadiran hari ini',value:todayPresence===undefined?'—':todayPresence+'%',caption:'Berdasarkan absensi masuk',target:'Absensi'},
