@@ -1,6 +1,6 @@
 # KarsaHQ
 
-HRIS Next.js dan TypeScript dengan database Neon PostgreSQL. Dashboard mencakup direktori karyawan, departemen, pengajuan cuti/lembur/koreksi absensi, persetujuan, rekap CSV, absensi GPS, dan audit log. Payroll dinonaktifkan.
+HRIS Next.js dan TypeScript dengan database Neon PostgreSQL. Dashboard mencakup direktori karyawan, departemen, pengajuan cuti/lembur/koreksi absensi, persetujuan, rekap CSV, absensi GPS, dan audit log. Profil menyimpan masa kerja, kontrak, riwayat, dan lampiran PDF dengan akses admin HR. Penggajian mendukung pratinjau, penerbitan per orang per bulan, dan cetak slip. Tarif pajak diisi manual sebagai parameter, lalu sistem menghitung potongan nominal. Perhitungan ini belum menerapkan aturan PPh 21 TER atau BPJS.
 
 ## Menjalankan aplikasi
 
@@ -21,3 +21,5 @@ Hubungkan root repo. Atur `DATABASE_URL` (pooled), `BETTER_AUTH_SECRET`, `BETTER
 - Catatan audit ditulis bersama mutasi dalam transaksi dan bersifat append-only. UI menampilkan 100 peristiwa terkini. Audit menghindari penyimpanan salinan koordinat absensi.
 - Absensi menggunakan waktu server di zona WIB dan izin lokasi browser. Admin dapat mengatur area kantor. Lokasi di luar radius atau kurang akurat disimpan dengan status untuk ditinjau. Satu masuk dan satu pulang per akun per hari. Nilai kehadiran menggunakan jumlah akun workspace.
 - Saat ini setup web membuat admin pertama. Admin dapat membuat tautan undangan sekali pakai lewat profil karyawan, berlaku 48 jam. Akun staf dapat mencatat absensi sendiri setelah mengaktifkan 2FA. Persetujuan masih satu tahap. Shift, selfie, saldo cuti, audit atas pembacaan, dan log formal autentikasi berada di luar rilis awal.
+
+Halaman utama ada di `/`. Dashboard yang memerlukan 2FA ada di `/dashboard`. Setelah slip terbit, staf yang ditautkan ke profil karyawan dapat membuka slipnya dari menu Penggajian.

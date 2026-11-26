@@ -1,10 +1,13 @@
 'use client'
 
-import {Activity, ArrowDownToLine, ArrowRight, ArrowUpRight, Bell, Building2, CalendarDays, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock3, Command, LayoutDashboard, LogOut, Menu, Moon, Plus, Search, Sun, Users, X} from 'lucide-react'
+import {Activity, ArrowDownToLine, ArrowRight, ArrowUpRight, Bell, Building2, CalendarDays, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Clock3, Command, LayoutDashboard, LogOut, Moon, Plus, Search, Sun, Users, X} from 'lucide-react'
 import {useEffect, useState} from 'react'
+import {flushSync} from 'react-dom'
 import type {FormEvent} from 'react'
 import {departments, employeeInput} from '../../../packages/core/workspace'
 import type {Employee, Request} from '../../../packages/core/workspace'
+
+import { EmployeeRecords, PeopleAnalytics, Payroll } from './people'
 
 const nav = [
   {label:'Dashboard', icon:LayoutDashboard},
@@ -14,6 +17,7 @@ const nav = [
   {label:'Cuti & Lembur', icon:CalendarDays},
   {label:'Persetujuan', icon:ClipboardList},
   {label:'Laporan', icon:Activity},
+  {label:'Penggajian', icon:ClipboardList},
   {label:'Audit log', icon:ClipboardList},
 ]
 const jakartaDay = (date:Date) => new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(date)
@@ -22,7 +26,7 @@ type Audit = {id:string;actor_id:string;action:string;entity_id:string;created_a
 type Clock = {id:string;event:string;review:string;recorded_at:string;distance_m:number|null}
 type Snapshot = {staff:Employee[];approvals:Request[];audit:Audit[];attendance:Clock[];company:string;role:'admin'|'employee';user:string;presence:Record<string,number>}
 const dateTimes = (date:string) => new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date(date))
-const actions:Record<string,string> = {'workspace.created':'Workspace dibuat','employee.add':'Karyawan ditambahkan','request.add':'Pengajuan dibuat','request.decide':'Keputusan pengajuan dicatat','attendance.record':'Absensi dicatat','office.configure':'Area kantor diubah','employee.invite':'Undangan staf dibuat','employee.invite.accepted':'Undangan staf dipakai'}
+const actions:Record<string,string> = {'workspace.created':'Workspace dibuat','employee.profile':'Profil karyawan diperbarui','employee.history':'Riwayat kerja ditambahkan','employee.document':'Dokumen karyawan ditambahkan','employee.download':'Dokumen karyawan diunduh','payroll.publish':'Slip gaji diterbitkan','employee.add':'Karyawan ditambahkan','request.add':'Pengajuan dibuat','request.decide':'Keputusan pengajuan dicatat','attendance.record':'Absensi dicatat','office.configure':'Area kantor diubah','employee.invite':'Undangan staf dibuat','employee.invite.accepted':'Undangan staf dipakai'}
 function weekFor(offset:number,presence:Record<string,number>) {
   const today = new Date(jakartaDay(new Date())+'T12:00:00Z')
   const monday = new Date(today)
@@ -51,8 +55,6 @@ export default function Dashboard() {
   const [status,setStatus] = useState('Semua status')
   const [panel,setPanel] = useState<'add'|'submit'|'request'|'employee'|'search'|'alerts'|null>(null)
   const [selection,setSelection] = useState('')
-  const [mobile,setMobile] = useState(false)
-  const [compact,setCompact] = useState(false)
   const [dark,setDark] = useState(false)
   const [notice,setNotice] = useState('')
   const [error,setError] = useState('')
@@ -66,18 +68,9 @@ export default function Dashboard() {
     if (data.role==='employee') setPage(current=>current==='Dashboard'?'Absensi':current)
   }
   useEffect(()=>{
-    setCompact(localStorage.getItem('karsahq-sidebar')==='compact')
     const theme=localStorage.getItem('karsahq-theme')
     setDark(theme===null?window.matchMedia('(prefers-color-scheme: dark)').matches:theme==='dark')
   },[])
-  function toggleSidebar() {
-    if (window.matchMedia('(max-width: 700px)').matches) {
-      setMobile(current=>!current)
-    } else {
-      localStorage.setItem('karsahq-sidebar',compact?'wide':'compact')
-      setCompact(!compact)
-    }
-  }
   function toggleTheme() {
     localStorage.setItem('karsahq-theme',dark?'light':'dark')
     setDark(!dark)
@@ -120,9 +113,10 @@ export default function Dashboard() {
   const requestRows = approvals.filter(item=>(page!=='Cuti & Lembur' || item.type!=='Koreksi absensi') && (status==='Semua status' || item.status===status))
 
   function go(destination:string) {
-    setPage(destination)
-    setPanel(null)
-    setMobile(false)
+    const change=()=>{setPage(destination);setPanel(null)}
+    if (destination!==page&&document.startViewTransition&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.startViewTransition(()=>flushSync(change))
+    } else change()
     setQuery('')
     setStatus('Semua status')
     window.scrollTo(0,0)
@@ -211,15 +205,13 @@ export default function Dashboard() {
   }
 
   if (!snapshot) return <main><p role={loadError?'alert':'status'}>{loadError||'Memuat workspace…'}</p>{loadError&&<button className="secondary" onClick={()=>window.location.reload()}>Muat ulang</button>}</main>
-  return <div className={compact?'shell compact':'shell'} data-theme={dark?'dark':'light'}>
-    {mobile && <button className="overlay" aria-label="Tutup menu" onClick={()=>setMobile(false)}/>}
-    <aside id="dashboard-sidebar" className={mobile?'sidebar visible':'sidebar'}>
-      <button className="brand" aria-label="KarsaHQ" onClick={()=>go(admin?'Dashboard':'Absensi')}><span className="mark"><i/><i/><i/></span><span className="brand-word">Karsa<b>HQ</b></span></button>
-      <nav aria-label="Navigasi utama"><p>Menu utama</p>{nav.filter(item=>admin||item.label==='Absensi').map(({label,icon:Icon},index)=><div key={label}>{index===3 && <p>Operasional</p>}{index===6 && <p>Laporan & audit</p>}<button className={page===label?'nav active':'nav'} aria-current={page===label?'page':undefined} aria-label={label} title={compact?label:undefined} onClick={()=>go(label)}><Icon size={19}/><span className="nav-label">{label}</span>{label==='Persetujuan' && pending.length>0 && <span className="count">{pending.length}</span>}</button></div>)}</nav>
-      <div className="sidebar-foot"><span className="initial admin">{initials(snapshot.user)}</span><div><b>{snapshot.user}</b><small>{admin?'Admin HR':'Karyawan'}</small></div></div>
-    </aside>
+  return <div className="shell karsa-shell" data-theme={dark?'dark':'light'}>
     <div className="content">
-      <header className="top"><button className="icon sidebar-toggle" aria-label="Alihkan tampilan sidebar" aria-controls="dashboard-sidebar" title="Alihkan tampilan sidebar" onClick={toggleSidebar}><Menu size={21}/></button><div className="tools"><button className="icon theme-toggle" aria-label={dark?'Aktifkan mode terang':'Aktifkan mode malam'} title={dark?'Mode terang':'Mode malam'} onClick={toggleTheme}>{dark?<Sun size={20}/>:<Moon size={20}/>}</button>{admin&&<button className="search" aria-label="Cari karyawan" onClick={()=>{setQuery('');open('search')}}><Search size={16}/><span>Cari karyawan</span><kbd><Command size={11}/> K</kbd></button>}{admin&&<button className="icon bell" aria-label="Pemberitahuan" onClick={()=>open('alerts')}><Bell size={18}/>{pending.length>0 && <i/>}</button>}<button className="icon" aria-label="Keluar" title="Keluar" onClick={async()=>{const response=await fetch('/api/auth/sign-out',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(response.ok)window.location.assign('/login');else setNotice('Gagal keluar. Coba lagi.')}}><LogOut size={18}/></button></div></header>
+      <header className="karsa-header">
+        <div className="karsa-brandline">      <button className="brand" aria-label="KarsaHQ" onClick={()=>go(admin?'Dashboard':'Absensi')}><span className="mark"><i/><i/><i/></span><span className="brand-word">Karsa<b>HQ</b></span></button>
+<div className="header-tools"><div className="tools"><button className="icon theme-toggle" aria-label={dark?'Aktifkan mode terang':'Aktifkan mode malam'} title={dark?'Mode terang':'Mode malam'} onClick={toggleTheme}>{dark?<Sun size={20}/>:<Moon size={20}/>}</button>{admin&&<button className="search" aria-label="Cari karyawan" onClick={()=>{setQuery('');open('search')}}><Search size={16}/><span>Cari karyawan</span><kbd><Command size={11}/> K</kbd></button>}{admin&&<button className="icon bell" aria-label="Pemberitahuan" onClick={()=>open('alerts')}><Bell size={18}/>{pending.length>0 && <i/>}</button>}<button className="icon" aria-label="Keluar" title="Keluar" onClick={async()=>{const response=await fetch('/api/auth/sign-out',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(response.ok)window.location.assign('/');else setNotice('Gagal keluar. Coba lagi.')}}><LogOut size={18}/></button></div><span className="initial admin" title={snapshot.user}>{initials(snapshot.user)}</span></div></div>
+        <nav id="dashboard-menu" className="top-navigation" aria-label="Navigasi utama">{nav.filter(item=>admin||['Absensi','Penggajian'].includes(item.label)).map(({label,icon:Icon})=><button key={label} className={page===label?'nav active':'nav'} aria-current={page===label?'page':undefined} onClick={()=>go(label)}><Icon size={16}/><span>{label}</span>{label==='Persetujuan'&&pending.length>0&&<span className="count">{pending.length}</span>}</button>)}</nav>
+      </header>
       <main className="workspace-page" key={page}>
         {page==='Dashboard' ? <>
           <div className="intro"><div><div className="today"><span/> {new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'full'}).format(new Date())}</div><h1>Dashboard</h1><p>Pantau kehadiran tim dan pengajuan yang perlu ditinjau.</p></div><button className="primary" onClick={()=>open('add')}><Plus size={17}/> Tambah karyawan</button></div>
@@ -235,7 +227,7 @@ export default function Dashboard() {
           </section></div>
           <section className="card approvals"><div className="card-head"><div><h2>Pengajuan terbaru</h2><p>Cuti, lembur, dan koreksi absensi</p></div><button className="secondary" onClick={()=>go('Persetujuan')}>Lihat semua <ArrowRight size={15}/></button></div>{approvalTable(approvals.slice(0,4))}</section>
         </> : <>
-          <div className="intro"><div><h1>{page}</h1><p>{({Karyawan:'Kelola direktori dan profil karyawan.',Organisasi:'Lihat susunan departemen dan anggota tim.',Absensi:'Tinjau ringkasan kehadiran per minggu.','Cuti & Lembur':'Tinjau status pengajuan cuti dan lembur.',Persetujuan:'Tinjau pengajuan dan catat keputusan.',Laporan:'Unduh rekap operasional HR.','Audit log':'Lihat perubahan dan aktivitas operasional di workspace.'} as Record<string,string>)[page]}</p></div>{page==='Karyawan' && <button className="primary" onClick={()=>open('add')}><Plus size={17}/> Tambah karyawan</button>}</div>
+          <div className="intro"><div><h1>{page}</h1><p>{({Karyawan:'Kelola direktori dan profil karyawan.',Organisasi:'Lihat susunan departemen dan anggota tim.',Absensi:'Tinjau ringkasan kehadiran per minggu.','Cuti & Lembur':'Tinjau status pengajuan cuti dan lembur.',Persetujuan:'Tinjau pengajuan dan catat keputusan.',Laporan:'Pantau tenaga kerja, kehadiran, dan status kontrak.',Penggajian:'Hitung gaji bulanan dan lihat slip yang diterbitkan.','Audit log':'Lihat perubahan dan aktivitas operasional di workspace.'} as Record<string,string>)[page]}</p></div>{page==='Karyawan' && <button className="primary" onClick={()=>open('add')}><Plus size={17}/> Tambah karyawan</button>}</div>
           {page==='Karyawan' && <section className="card approvals"><div className="card-head"><h2>Direktori karyawan</h2><input className="field" placeholder="Cari nama, jabatan, atau ID" aria-label="Cari direktori" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="table-scroll"><table><thead><tr><th>Nama</th><th>ID</th><th>Jabatan</th><th>Departemen</th><th><span className="sr-only">Tindakan</span></th></tr></thead><tbody>{matches.map((item,index)=><tr key={item.id}><td><div className="person"><span className={'initial tone'+index%4}>{initials(item.name)}</span><b>{item.name}</b></div></td><td>{item.id}</td><td>{item.role}</td><td>{item.department}</td><td><button className="icon" aria-label={'Profil '+item.name} onClick={()=>open('employee',item.id)}><ChevronRight size={16}/></button></td></tr>)}</tbody></table>{!matches.length && <p className="empty">Karyawan tidak ditemukan.</p>}</div></section>}
           {page==='Organisasi' && <div className="departments">{departments.map(department=><section className="card" key={department}><span className="metric-icon"><Building2 size={18}/></span><h2>{department}</h2><p>{staff.filter(item=>item.department===department).length} anggota</p>{staff.filter(item=>item.department===department).map(item=><button className="list-part" key={item.id} onClick={()=>open('employee',item.id)}>{item.name}<ChevronRight size={16}/></button>)}</section>)}</div>}
           {page==='Absensi' && <>
@@ -246,6 +238,8 @@ export default function Dashboard() {
             </section>{admin&&chart()}</>}
           {page==='Audit log' && admin && <section className="card approvals"><div className="card-head"><h2>Aktivitas terbaru</h2></div><div className="table-scroll"><table><thead><tr><th>Waktu (WIB)</th><th>Aktivitas</th><th>ID aktor</th><th>ID data</th></tr></thead><tbody>{snapshot.audit.map(item=><tr key={item.id}><td>{dateTimes(item.created_at)}</td><td>{actions[item.action]??item.action}</td><td>{item.actor_id}</td><td>{item.entity_id}</td></tr>)}</tbody></table>{!snapshot.audit.length&&<p className="empty">Belum ada aktivitas.</p>}</div></section>}
           {(page==='Persetujuan'||page==='Cuti & Lembur') && <section className="card approvals"><div className="card-head"><h2>Daftar pengajuan</h2><div className="request-tools">{page==='Cuti & Lembur' && <button className="primary" onClick={()=>open('submit')}><Plus size={17}/> Buat pengajuan</button>}<select className="field" aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}>{['Semua status','Menunggu','Disetujui','Ditolak'].map(item=><option key={item}>{item}</option>)}</select></div></div>{approvalTable(requestRows)}</section>}
+          {page==='Penggajian' && <Payroll employees={staff} admin={admin}/>}
+          {page==='Laporan' && <PeopleAnalytics/>}
           {page==='Laporan' && <section className="card approvals"><div className="card-head"><div><h2>Rekap pengajuan</h2><p>{approvals.length} pengajuan dalam workspace</p></div><button className="secondary" onClick={exportReport}><ArrowDownToLine size={16}/> Unduh CSV</button></div>{approvalTable(approvals)}</section>}
         </>}
         {loadError&&<p role="alert">{loadError}</p>}
@@ -256,7 +250,7 @@ export default function Dashboard() {
       {panel==='add' && <form onSubmit={add}><label>Nama lengkap<input className="field" name="name" required minLength={2} maxLength={100}/></label><label>Jabatan<input className="field" name="role" required minLength={2} maxLength={100}/></label><label>Departemen<select className="field" name="department" required>{departments.map(item=><option key={item}>{item}</option>)}</select></label>{error && <p role="alert">{error}</p>}<div className="actions"><button type="button" className="secondary" onClick={()=>setPanel(null)}>Batal</button><button className="primary" disabled={busy}>Simpan karyawan</button></div></form>}
       {panel==='submit' && <form onSubmit={submitRequest}><label>Karyawan<select className="field" name="employee" required>{staff.map(item=><option key={item.id} value={item.id}>{item.name} · {item.id}</option>)}</select></label><label>Jenis pengajuan<select className="field" name="type" required>{(page==='Absensi'?['Koreksi absensi']:['Cuti tahunan','Lembur']).map(item=><option key={item}>{item}</option>)}</select></label><label>Tanggal<input className="field" name="date" type="date" required/></label>{error && <p role="alert">{error}</p>}<div className="actions"><button type="button" className="secondary" onClick={()=>setPanel(null)}>Batal</button><button className="primary" disabled={busy}>Kirim pengajuan</button></div></form>}
       {panel==='request' && selected && <><dl><dt>Karyawan</dt><dd>{selected.name}</dd><dt>Jenis</dt><dd>{selected.type}</dd><dt>Tanggal</dt><dd>{selected.date}</dd><dt>Status</dt><dd><span className={'status '+selected.status.toLowerCase()}>{selected.status}</span></dd></dl>{error&&<p role="alert">{error}</p>}{selected.status==='Menunggu' && <div className="actions"><button className="secondary" disabled={busy} onClick={()=>decide('Ditolak')}>Tolak</button><button className="primary" disabled={busy} onClick={()=>decide('Disetujui')}><Check size={16}/> Setujui</button></div>}</>}
-      {panel==='employee' && selectedEmployee && <><dl><dt>Nama</dt><dd>{selectedEmployee.name}</dd><dt>ID</dt><dd>{selectedEmployee.id}</dd><dt>Jabatan</dt><dd>{selectedEmployee.role}</dd><dt>Departemen</dt><dd>{selectedEmployee.department}</dd></dl>
+      {panel==='employee' && selectedEmployee && <><EmployeeRecords key={selectedEmployee.id} employee={selectedEmployee} onSaved={()=>{void refresh().catch(()=>undefined)}}/><dl><dt>Nama</dt><dd>{selectedEmployee.name}</dd><dt>ID</dt><dd>{selectedEmployee.id}</dd><dt>Jabatan</dt><dd>{selectedEmployee.role}</dd><dt>Departemen</dt><dd>{selectedEmployee.department}</dd></dl>
       {admin&&<div className="invite-box">{error&&<p role="alert">{error}</p>}{invite?<><p>Tautan berlaku 48 jam dan hanya bisa dipakai sekali.</p><input className="field full" value={invite} readOnly aria-label="Tautan undangan" onFocus={event=>event.currentTarget.select()}/><button className="secondary" onClick={async()=>{try{await navigator.clipboard.writeText(invite);setNotice('Tautan undangan disalin.')}catch{setError('Pilih dan salin tautan secara manual.')}}}>Salin tautan</button></>:<button className="secondary" disabled={busy} onClick={()=>inviteEmployee(selectedEmployee.id)}>Buat tautan undangan</button>}</div>}</>}
       {panel==='search' && <><input className="field full" aria-label="Nama, jabatan, departemen, atau ID" placeholder="Nama, jabatan, departemen, atau ID" value={query} onChange={e=>setQuery(e.target.value)}/>{matches.map(item=><button className="list-part" key={item.id} onClick={()=>open('employee',item.id)}>{item.name}<ChevronRight size={16}/></button>)}{!matches.length && <p className="empty">Karyawan tidak ditemukan.</p>}</>}
       {panel==='alerts' && <>{pending.map(item=><button className="list-part" key={item.id} onClick={()=>open('request',item.id)}>{item.type} · {item.name}<ChevronRight size={16}/></button>)}{!pending.length && <p className="empty">Semua pengajuan sudah ditinjau.</p>}</>}

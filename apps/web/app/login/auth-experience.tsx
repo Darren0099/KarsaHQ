@@ -94,7 +94,7 @@ export default function AuthExperience({initial='login'}:{initial?:'login'|'invi
         const {data,error} = await auth.signIn.email({email:value('email'),password:value('password')})
         if (error || !data) throw new Error('Gagal masuk. Periksa email dan kata sandi, atau coba lagi beberapa saat.')
         if ('twoFactorRedirect' in data && data.twoFactorRedirect) setStep('otp')
-        else if ('user' in data && data.user.twoFactorEnabled) window.location.assign('/')
+        else if ('user' in data && data.user.twoFactorEnabled) window.location.assign('/dashboard')
         else {setStep('enroll');await beginEnrollment(value('password'))}
       } else if (step==='enroll' && !qr) {
         await beginEnrollment(value('password'))
@@ -102,7 +102,7 @@ export default function AuthExperience({initial='login'}:{initial?:'login'|'invi
         const code = value('code').trim()
         const result = recovery ? await auth.twoFactor.verifyBackupCode({code}) : await auth.twoFactor.verifyTotp({code})
         if (result.error) throw new Error('Kode tidak valid atau kedaluwarsa.')
-        window.location.assign('/')
+        window.location.assign('/dashboard')
       }
     } catch (err) {setError(err instanceof Error ? err.message : 'Terjadi kesalahan. Coba lagi.')}
     finally {setBusy(false)}
