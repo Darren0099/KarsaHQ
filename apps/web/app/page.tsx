@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowDown, ArrowUpRight, Banknote, CalendarDays, ChartNoAxesCombined, ClipboardCheck, FolderOpen, LockKeyhole, MapPin, ScanLine, UsersRound } from 'lucide-react'
 import Reveal from './reveal'
 import FeatureCard from './feature-card'
+import TechnologyStrip from './technology-strip'
 
 const modules=[
   {icon:UsersRound,title:'Direktori karyawan',description:'Temukan profil, riwayat jabatan, kontrak, dan dokumen di tempat yang sama.'},
@@ -23,14 +24,10 @@ function Brand() {
   return <Link className="landing-brand" href="/"><span className="mark"><i/><i/><i/></span>Karsa<strong>HQ</strong></Link>
 }
 
-const technology = [
-  ['Next.js','nextdotjs'], ['React','react'], ['TypeScript','typescript'],
-  ['Neon','neon'], ['PostgreSQL','postgresql'], ['Better Auth','betterauth'], ['Vercel','vercel']
-]
 const dashboardScreenshot: string | null = null
 
 export default function Landing() {
-  return <div className="landing landing-editorial">
+  return <div className="landing landing-editorial landing-deck">
     <Reveal/>
     <header className="landing-nav">
       <Brand/>
@@ -48,10 +45,7 @@ export default function Landing() {
           <div className="landing-actions"><Link className="landing-cta" href="/login">Masuk ke KarsaHQ <ArrowUpRight size={17}/></Link><a href="#fitur">Jelajahi fitur <ArrowDown size={15}/></a></div>
         </div>
       </section>
-      <section className="landing-stack" aria-labelledby="stack-title" data-reveal>
-        <h2 id="stack-title">Teknologi yang digunakan</h2>
-        <ul>{technology.map(([name,icon])=><li key={name}><img src={'/stack/'+icon+'.svg'} alt="" width={24} height={24}/><span>{name}</span></li>)}</ul>
-      </section>
+      <TechnologyStrip/>
       <section id="fitur" className="landing-section">
         <div className="landing-section-head" data-reveal><h2>Fitur untuk setiap hari kerja.</h2><p>Dari pendataan karyawan sampai penerbitan slip bulanan.</p></div>
         <div className="landing-feature-grid">{modules.map(({icon:Icon,title,description})=><FeatureCard key={title} title={title} description={description} icon={<Icon size={24}/>}/>)}</div>
@@ -60,27 +54,29 @@ export default function Landing() {
         <div><h2>Data yang rapi, keputusan yang jelas.</h2><p>Lihat konteks sebelum menentukan tindak lanjut, dari kontrak yang akan berakhir hingga komponen yang membentuk gaji.</p></div>
         <ul className="landing-list"><li><FolderOpen/><div><b>Satu profil per karyawan</b><p>Teruskan pekerjaan tanpa mencari dokumen di banyak tempat.</p></div></li><li><CalendarDays/><div><b>Prioritas kontrak terlihat</b><p>Tinjau tanggal akhir dan status kerja sebelum mengambil keputusan.</p></div></li><li><ScanLine/><div><b>Perubahan bisa ditelusuri</b><p>Periksa jejak aktivitas HR lewat audit log.</p></div></li></ul>
       </section>
-      <section id="alur" className="landing-section">
-        <div className="landing-section-head" data-reveal><h2>Dari data awal ke slip gaji.</h2><p>Tiga langkah untuk menjalankan satu siklus penggajian.</p></div>
-        <ol className="landing-steps">{[
-          ['Siapkan profil','Lengkapi nama, jabatan, tanggal mulai, dan kontrak.'],
-          ['Catat dan tinjau','Kehadiran tercatat lewat absensi GPS. HR meninjau pengajuan lembur.'],
-          ['Hitung dan terbitkan','Periksa gaji bersih, lalu terbitkan slip untuk karyawan.']
-        ].map(([title,copy],index)=><li key={title} data-reveal><span>{index+1}</span><h3>{title}</h3><p>{copy}</p></li>)}</ol>
-      </section>
-      <section id="dashboard-preview" className="landing-section landing-split landing-preview" data-reveal>
-        <div><h2>Kenali dashboard sebelum mulai.</h2><p>Buka modul dari sidebar untuk meninjau profil, kontrak, kehadiran, pengajuan, dan slip gaji.</p><Link className="landing-cta" href="/dashboard">Buka dashboard <ArrowUpRight size={16}/></Link></div>
-        <figure className="landing-screenshot" aria-label="Bingkai tangkapan layar dashboard KarsaHQ">
-          {dashboardScreenshot && <img src={dashboardScreenshot} alt="Tampilan dashboard KarsaHQ" width={1280} height={800}/>}
-        </figure>
+      <section id="alur" className="landing-section landing-split landing-workflow">
+        <div data-reveal>
+          <h2>Dari data awal ke slip gaji.</h2>
+          <ol className="landing-steps">{[
+            ['Siapkan profil','Lengkapi nama, jabatan, tanggal mulai, dan kontrak.'],
+            ['Catat dan tinjau','Kehadiran tercatat lewat absensi GPS. HR meninjau pengajuan lembur.'],
+            ['Hitung dan terbitkan','Periksa gaji bersih, lalu terbitkan slip untuk karyawan.']
+          ].map(([title,copy],index)=><li key={title} data-reveal><span>{index+1}</span><div><h3>{title}</h3><p>{copy}</p></div></li>)}</ol>
+        </div>
+        <div id="dashboard-preview" className="landing-workflow-visual" data-reveal>
+          <figure className="landing-screenshot" aria-label="Bingkai tangkapan layar dashboard KarsaHQ">
+            {dashboardScreenshot && <img src={dashboardScreenshot} alt="Tampilan dashboard KarsaHQ" width={1280} height={800}/>}
+          </figure>
+          <Link className="landing-cta" href="/dashboard">Buka dashboard <ArrowUpRight size={16}/></Link>
+        </div>
       </section>
       <section id="akses" className="landing-section">
         <div className="landing-section-head" data-reveal><h2>Akses sesuai peran.</h2><p>Masuk dengan verifikasi dua langkah. Setiap pengguna melihat data yang sesuai dengan aksesnya.</p></div>
-        <div className="landing-features">{[
+        <div className="landing-feature-grid">{[
           ['Admin HR','Kelola profil, dokumen, pengajuan, dan penerbitan slip.'],
           ['Karyawan','Catat absensi dan buka slip yang diterbitkan untuk akunmu.'],
           ['Data perusahaan','Data operasional dipisahkan berdasarkan perusahaan.']
-        ].map(([title,copy])=><article key={title} data-reveal><LockKeyhole size={21}/><h3>{title}</h3><p>{copy}</p></article>)}</div>
+        ].map(([title,copy])=><FeatureCard key={title} title={title} description={copy} icon={<LockKeyhole size={24}/>}/>)}</div>
       </section>
       <section id="faq" className="landing-section landing-split landing-faq">
         <div data-reveal><h2>Pertanyaan yang sering muncul.</h2></div>
@@ -91,6 +87,6 @@ export default function Landing() {
         <div className="landing-actions"><Link href="/login">Masuk</Link><Link className="landing-cta" href="/register">Daftar <ArrowUpRight size={17}/></Link></div>
       </section>
     </main>
-    <footer className="landing-footer"><Brand/><div className="landing-actions"><a href="#fitur">Fitur</a><a href="#faq">FAQ</a><Link href="/login">Masuk</Link></div></footer>
+    <footer className="landing-footer"><Brand/><nav aria-label="Navigasi footer"><a href="#fitur">Fitur</a><a href="#alur">Cara kerja</a><a href="#akses">Akses</a><a href="#faq">FAQ</a><Link href="/login">Masuk</Link></nav></footer>
   </div>
 }
