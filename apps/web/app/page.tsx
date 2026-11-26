@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { ArrowDown, ArrowUpRight, Banknote, CalendarDays, ChartNoAxesCombined, ClipboardCheck, FolderOpen, LayoutDashboard, LockKeyhole, MapPin, ScanLine, UsersRound } from 'lucide-react'
+import { ArrowDown, ArrowUpRight, Banknote, CalendarDays, ChartNoAxesCombined, ClipboardCheck, FolderOpen, LockKeyhole, MapPin, ScanLine, UsersRound } from 'lucide-react'
 import Reveal from './reveal'
+import FeatureCard from './feature-card'
 
 const modules=[
   {icon:UsersRound,title:'Direktori karyawan',description:'Temukan profil, riwayat jabatan, kontrak, dan dokumen di tempat yang sama.'},
@@ -22,9 +23,11 @@ function Brand() {
   return <Link className="landing-brand" href="/"><span className="mark"><i/><i/><i/></span>Karsa<strong>HQ</strong></Link>
 }
 
-function AttendancePreview() {
-  return <div className="product-chart"><b>Kehadiran mingguan</b><div>{[59,76,67,90,82,93,72].map((height,index)=><i key={index} style={{height:height+'%'}}/>)}</div></div>
-}
+const technology = [
+  ['Next.js','nextdotjs'], ['React','react'], ['TypeScript','typescript'],
+  ['Neon','neon'], ['PostgreSQL','postgresql'], ['Better Auth','betterauth'], ['Vercel','vercel']
+]
+const dashboardScreenshot: string | null = null
 
 export default function Landing() {
   return <div className="landing landing-editorial">
@@ -45,9 +48,13 @@ export default function Landing() {
           <div className="landing-actions"><Link className="landing-cta" href="/login">Masuk ke KarsaHQ <ArrowUpRight size={17}/></Link><a href="#fitur">Jelajahi fitur <ArrowDown size={15}/></a></div>
         </div>
       </section>
+      <section className="landing-stack" aria-labelledby="stack-title" data-reveal>
+        <h2 id="stack-title">Teknologi yang digunakan</h2>
+        <ul>{technology.map(([name,icon])=><li key={name}><img src={'/stack/'+icon+'.svg'} alt="" width={24} height={24}/><span>{name}</span></li>)}</ul>
+      </section>
       <section id="fitur" className="landing-section">
         <div className="landing-section-head" data-reveal><h2>Fitur untuk setiap hari kerja.</h2><p>Dari pendataan karyawan sampai penerbitan slip bulanan.</p></div>
-        <div className="landing-features">{modules.map(({icon:Icon,title,description})=><article key={title} data-reveal><Icon size={24}/><h3>{title}</h3><p>{description}</p></article>)}</div>
+        <div className="landing-feature-grid">{modules.map(({icon:Icon,title,description})=><FeatureCard key={title} title={title} description={description} icon={<Icon size={24}/>}/>)}</div>
       </section>
       <section id="manfaat" className="landing-section landing-split landing-benefits" data-reveal>
         <div><h2>Data yang rapi, keputusan yang jelas.</h2><p>Lihat konteks sebelum menentukan tindak lanjut, dari kontrak yang akan berakhir hingga komponen yang membentuk gaji.</p></div>
@@ -62,13 +69,10 @@ export default function Landing() {
         ].map(([title,copy],index)=><li key={title} data-reveal><span>{index+1}</span><h3>{title}</h3><p>{copy}</p></li>)}</ol>
       </section>
       <section id="dashboard-preview" className="landing-section landing-split landing-preview" data-reveal>
-        <div><h2>Kenali dashboard sebelum mulai.</h2><p>Pindah modul lewat tab di bagian atas. Lihat pengajuan, kontrak, kehadiran, atau slip di panel yang sama.</p><Link className="landing-cta" href="/dashboard">Buka dashboard <ArrowUpRight size={16}/></Link></div>
-        <div className="landing-product" aria-label="Ilustrasi tampilan dashboard KarsaHQ">
-          <div className="product-top"><span>Karsa<strong>HQ</strong></span><div><LayoutDashboard size={14}/> Dashboard</div><div><UsersRound size={14}/> Karyawan</div></div>
-          <div className="product-title"><span>Operasional SDM</span><strong>Ringkasan tim</strong></div>
-          <AttendancePreview/>
-          <div className="product-payment"><Banknote size={18}/><span>Slip gaji</span><b>Terbit</b></div>
-        </div>
+        <div><h2>Kenali dashboard sebelum mulai.</h2><p>Buka modul dari sidebar untuk meninjau profil, kontrak, kehadiran, pengajuan, dan slip gaji.</p><Link className="landing-cta" href="/dashboard">Buka dashboard <ArrowUpRight size={16}/></Link></div>
+        <figure className="landing-screenshot" aria-label="Bingkai tangkapan layar dashboard KarsaHQ">
+          {dashboardScreenshot && <img src={dashboardScreenshot} alt="Tampilan dashboard KarsaHQ" width={1280} height={800}/>}
+        </figure>
       </section>
       <section id="akses" className="landing-section">
         <div className="landing-section-head" data-reveal><h2>Akses sesuai peran.</h2><p>Masuk dengan verifikasi dua langkah. Setiap pengguna melihat data yang sesuai dengan aksesnya.</p></div>
