@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;650;700;750&display=swap');
 :root{--ink:#201f1e;--muted:#686764;--line:#eae7e2;--surface:#fff;--canvas:#f7f7f5;--orange:#ef622c;--deep-orange:#a43712;--pale:#fff1e8;--dark:#252320}
 *{box-sizing:border-box}
 body{margin:0;background:var(--canvas);color:var(--ink);font-family:Inter,Geist,"Segoe UI",system-ui,sans-serif;font-size:16px;-webkit-font-smoothing:antialiased}
@@ -265,15 +265,16 @@ html::-webkit-scrollbar,.shell::-webkit-scrollbar,.shell .sidebar::-webkit-scrol
   border-radius:clamp(24px,2.5vw,46px) 0 0 0;
   padding:clamp(24px,2.5vw,46px) clamp(20px,2.5vw,46px);
 }
-.shell h1{font-size:clamp(32px,2.5vw,46px);font-weight:500;letter-spacing:-.037em}
-.shell h2{font-size:clamp(18px,1.28vw,25px);font-weight:650}
-.shell .intro p,.shell .nav,.shell .metric p{font-size:clamp(15px,1.07vw,20px)}
-.shell .metric strong{font-size:clamp(30px,2.05vw,39px)}
-.shell .metric small,.shell .card-head p,.shell .sidebar nav p{font-size:clamp(13px,.94vw,18px)}
+.shell{font-size:14px}
+.shell h1{font-size:30px;font-weight:300;letter-spacing:-.025em}
+.shell h2{font-size:16px;font-weight:600}
+.shell .intro p,.shell .nav,.shell .metric p{font-size:14px}
+.shell .metric strong{font-size:24px;font-weight:700}
+.shell .metric small,.shell .card-head p,.shell .sidebar nav p{font-size:12px}
 .shell .sidebar nav p{color:var(--muted);letter-spacing:0;font-weight:500}
-.shell .nav{padding:12px 13px;min-height:47px;color:var(--ink);font-weight:500}
+.shell .nav{padding:12px 13px;min-height:47px;color:var(--ink);font-weight:400}
 .shell .nav svg,.shell .mark{flex:none}
-.shell .nav.active{background:var(--pale);color:var(--deep-orange);font-weight:650}
+.shell .nav.active{background:var(--pale);color:var(--deep-orange);font-weight:600}
 .shell .metrics{gap:clamp(10px,1.3vw,24px)}
 .shell .card{border-color:var(--line);border-radius:clamp(15px,1.3vw,24px);background:var(--surface)}
 .shell .metric{padding:clamp(12px,1.4vw,26px);min-height:clamp(125px,10.2vw,196px)}
